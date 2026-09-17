@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const sections = [
   ["Projects", "Company software, its purpose, and the people responsible for it."],
   ["Knowledge", "Installation guides, usage instructions, and project decisions."],
@@ -8,7 +10,7 @@ const sections = [
 export default function Home() {
   return (
     <div>
-      <header><a href="/">DevAtlas <span>/ workspace</span></a><span className="badge">Local development</span></header>
+      <header><Link href="/">DevAtlas <span>/ workspace</span></Link><span className="badge">Local development</span></header>
       <main>
         <p className="eyebrow">STEP 01 · FOUNDATION</p>
         <h1>A home for your team’s<br />software and knowledge.</h1>
