@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { getCurrentUser, signOut, type AppUser } from "@/lib/auth";
+import { isAtLeast } from "@/lib/roles";
 import { supabase } from "@/lib/supabase";
 
 type Status = "Active" | "Maintenance" | "Archived";
@@ -107,7 +108,7 @@ export default function Home() {
         <header className="topbar">
           <div className="breadcrumb">Company <span>/</span><strong>{section}</strong></div>
           <div className="topbar-actions">
-            {currentUser.role === "owner" && <Link href="/admin/users/" className="button secondary small-button">Accounts</Link>}
+            {isAtLeast(currentUser.role, "admin") && <Link href="/admin/users/" className="button secondary small-button">Accounts</Link>}
             <span className="user-chip">{currentUser?.name ?? "User"}</span>
             <button
               type="button"

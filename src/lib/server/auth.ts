@@ -1,11 +1,12 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { AccessError, accessRole, requireAdmin } from "@/lib/account-policy";
+import { AccessError, accessRole } from "@/lib/account-policy";
+import { type AppRole, isAtLeast } from "@/lib/roles";
 
 export { AccessError };
 const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 
-export async function authorize(request: Request, adminOnly = false) {
+export async function authorize(request: Request, minRole?: AppRole) {
   const token = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   if (!token || token.length > 8192) throw new AccessError(401, "Please sign in.");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,8 +16,8 @@ export async function authorize(request: Request, adminOnly = false) {
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) throw new AccessError(401, "Your session has expired. Please sign in again.");
   const adminId = process.env.DEVATLAS_ADMIN_USER_ID;
-  if (adminOnly) requireAdmin(data.user, adminId);
   const role = accessRole(data.user, adminId);
+  if (minRole && !isAtLeast(role, minRole)) throw new AccessError(403, "You don't have permission to do this.");
   return {
     id: data.user.id,
     name: String(data.user.user_metadata?.full_name ?? data.user.email?.split("@")[0] ?? "User"),

@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
+import type { AppRole } from "./roles";
 
-export type AppRole = "owner" | "member";
+export type { AppRole };
 export type AppUser = { id: string; name: string; email: string; role: AppRole; createdAt: string };
 
 export async function authorizedFetch(path: string, init: RequestInit = {}) {
