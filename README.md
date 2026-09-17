@@ -2,7 +2,9 @@
 
 An internal software catalog and team coordination platform.
 
-Step 1 contains the local application foundation and a responsive starting page. Authentication, database storage, task workflows, scoring, and AI are not implemented yet.
+The interface prototype contains a monochrome project catalog, live search and status filters, project overview dialogs, a team directory, and expandable shared guides. The new-project form adds projects to the current browser session only; refreshing resets all changes. All people and projects are fictional sample data.
+
+Authentication, database storage, task workflows, scoring, and AI are not implemented yet. The interface currently uses a static Next.js export for a private Sites preview. Before adding the planned database-backed server features, revisit the deployment architecture and remove static-export mode where needed.
 
 ## Run and verify
 
