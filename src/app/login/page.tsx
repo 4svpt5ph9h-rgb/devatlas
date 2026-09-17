@@ -16,8 +16,8 @@ export default function LoginPage() {
     let active = true;
     getCurrentUser().then(user => {
       if (active && user) router.replace("/");
-    }).catch(() => {
-      if (active) setError("Could not check your account. Please try signing in.");
+    }).catch(error => {
+      if (active) setError(error instanceof Error ? error.message : "Could not check your account. Please try signing in.");
     });
     return () => { active = false; };
   }, [router]);
@@ -34,8 +34,8 @@ export default function LoginPage() {
         return;
       }
       router.replace("/");
-    } catch {
-      setError("Could not connect. Check your internet connection and try again.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not connect. Check your internet connection and try again.");
     } finally {
       setBusy(false);
     }
