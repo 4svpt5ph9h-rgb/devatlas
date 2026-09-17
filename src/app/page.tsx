@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { getCurrentUser, signOut, type AppUser } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 type Status = "Active" | "Maintenance" | "Archived";
 type Section = "Projects" | "Team" | "Guides";
@@ -52,15 +53,26 @@ export default function Home() {
   const detailDialog = useRef<HTMLDialogElement>(null);
   const filtered = projects.filter(project => (status === "All projects" || project.status === status) && `${project.name} ${project.description} ${project.owner} ${project.stack}`.toLowerCase().includes(query.toLowerCase().trim()));
   useEffect(() => {
+    let active = true;
     async function checkAuth() {
-      const user = await getCurrentUser();
-      setCurrentUserState(user);
-      if (!user) {
-        router.replace("/login");
+      try {
+        const user = await getCurrentUser();
+        if (!active) return;
+        setCurrentUserState(user);
+        if (!user) router.replace("/login/");
+      } catch {
+        if (active) router.replace("/login/");
       }
     }
 
     checkAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
+      if (event === "SIGNED_OUT") {
+        setCurrentUserState(null);
+        router.replace("/login/");
+      }
+    });
+    return () => { active = false; subscription.unsubscribe(); };
   }, [router]);
 
   function changeSection(next: Section) { setSection(next); setNotice(""); }
@@ -74,6 +86,9 @@ export default function Home() {
     if (projects.some(project => project.name.toLowerCase() === name.toLowerCase())) { setError("A project with this name already exists."); return; }
     const project: Project = { id: `DRAFT-${crypto.randomUUID().slice(0, 8)}`, name, description, owner: String(data.get("owner")), stack: String(data.get("stack") ?? "").trim() || "Not added", status: "Active", updated: "Just now" };
     setProjects(current => [project, ...current]); setQuery(""); setStatus("All projects"); setSection("Projects"); setNotice(`${name} added to the demo.`); setError(""); event.currentTarget.reset(); createDialog.current?.close();
+  }
+  if (!currentUser) {
+    return <main className="auth-page"><p role="status">Checking your account…</p></main>;
   }
   return (
     <div className="app-shell">
@@ -96,9 +111,13 @@ export default function Home() {
               type="button"
               className="button secondary small-button"
               onClick={async () => {
-                await signOut();
-                setCurrentUserState(null);
-                router.replace("/login");
+                try {
+                  await signOut();
+                  setCurrentUserState(null);
+                  router.replace("/login/");
+                } catch {
+                  setNotice("Could not log out. Please try again.");
+                }
               }}
             >
               Log out
