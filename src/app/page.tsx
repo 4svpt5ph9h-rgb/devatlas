@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { getCurrentUser, signOut, type AppUser } from "@/lib/auth";
 
 type Status = "Active" | "Maintenance" | "Archived";
 type Section = "Projects" | "Team" | "Guides";
@@ -37,6 +39,7 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 function initials(name: string) { return name.split(" ").map(part => part[0]).slice(0, 2).join(""); }
 
 export default function Home() {
+  const router = useRouter();
   const [section, setSection] = useState<Section>("Projects");
   const [projects, setProjects] = useState(initialProjects);
   const [query, setQuery] = useState("");
@@ -44,9 +47,22 @@ export default function Home() {
   const [selected, setSelected] = useState<Project | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUserState] = useState<AppUser | null>(null);
   const createDialog = useRef<HTMLDialogElement>(null);
   const detailDialog = useRef<HTMLDialogElement>(null);
   const filtered = projects.filter(project => (status === "All projects" || project.status === status) && `${project.name} ${project.description} ${project.owner} ${project.stack}`.toLowerCase().includes(query.toLowerCase().trim()));
+  useEffect(() => {
+    async function checkAuth() {
+      const user = await getCurrentUser();
+      setCurrentUserState(user);
+      if (!user) {
+        router.replace("/login");
+      }
+    }
+
+    checkAuth();
+  }, [router]);
+
   function changeSection(next: Section) { setSection(next); setNotice(""); }
   function openProject(project: Project) { setSelected(project); detailDialog.current?.showModal(); }
   function createProject(event: FormEvent<HTMLFormElement>) {
@@ -72,7 +88,23 @@ export default function Home() {
         <div className="sidebar-bottom"><span className="demo-indicator">Demo</span><p>Sample data. Changes reset<br className="desktop-break"/> when you refresh.</p></div>
       </aside>
       <div className="main-shell">
-        <header className="topbar"><div className="breadcrumb">Company <span>/</span><strong>{section}</strong></div><span className="preview-label">Demo</span></header>
+        <header className="topbar">
+          <div className="breadcrumb">Company <span>/</span><strong>{section}</strong></div>
+          <div className="topbar-actions">
+            <span className="user-chip">{currentUser?.name ?? "User"}</span>
+            <button
+              type="button"
+              className="button secondary small-button"
+              onClick={async () => {
+                await signOut();
+                setCurrentUserState(null);
+                router.replace("/login");
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        </header>
         <main id="main-content" tabIndex={-1}>
           <div className="page-heading"><div><p className="overline">COMPANY / {section.toUpperCase()}</p><h1>{section}</h1><p className="page-description">{section === "Projects" ? "All company projects in one place." : section === "Team" ? "See who works on each project." : "Simple steps to help you work."}</p></div>{section === "Projects" && <button className="button primary" onClick={() => { setError(""); createDialog.current?.showModal(); }}><Icon name="plus"/>New project</button>}</div>
           {notice && <p className="notice" role="status">{notice}</p>}
