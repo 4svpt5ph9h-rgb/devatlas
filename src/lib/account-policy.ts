@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import { type AppRole, isAtLeast, isValidRole, roleRank } from "./roles";
+import { type AppRole, isValidRole } from "./roles";
 
 export class AccessError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -9,23 +9,27 @@ export class AccessError extends Error {
 }
 
 export function accessRole(user: User, adminId: string | undefined): AppRole {
-  if (!adminId?.trim()) throw new AccessError(503, "Account access is not set up yet.");
-  if (user.id === adminId) return "owner";
+  const ownerId = adminId?.trim().toLowerCase();
+  if (!ownerId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ownerId)) {
+    throw new AccessError(503, "Account access is not set up yet.");
+  }
+  if (user.id === ownerId) return "owner";
   const raw = user.app_metadata?.role;
-  // "owner" can only come from matching adminId above, never from metadata,
-  // so a compromised account can't self-grant it.
-  if (isValidRole(raw) && raw !== "owner") return raw;
+  // Membership and roles must both come from trusted admin metadata. Public
+  // sign-up and user-editable metadata do not grant company access.
+  if (user.app_metadata?.devatlas_access === true && isValidRole(raw) && raw !== "owner") return raw;
   throw new AccessError(403, "Your account has not been added to DevAtlas. Contact your administrator.");
 }
 
-export function requireAtLeastAdmin(role: AppRole): void {
-  if (!isAtLeast(role, "admin")) throw new AccessError(403, "Only an admin or above can create accounts.");
+export function requireOwner(role: AppRole): void {
+  if (role !== "owner") throw new AccessError(403, "Only the owner can create accounts.");
 }
 
 export function accountInput(
   value: unknown,
   callerRole: AppRole
 ): { name: string; email: string; password: string; role: AppRole } {
+  requireOwner(callerRole);
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new AccessError(400, "Enter a name, email, password, and role.");
   }
@@ -42,11 +46,9 @@ export function accountInput(
 
   const role = input.role;
   if (!isValidRole(role)) throw new AccessError(400, "Choose a valid role.");
-  // Never allow granting "owner" here, and never allow granting a role at or
-  // above the caller's own rank — this is what stops privilege creeping
-  // upward (an admin can't mint another admin, only a super admin can).
-  if (role === "owner" || roleRank(role) >= roleRank(callerRole)) {
-    throw new AccessError(403, "You can only create accounts with a role below your own.");
+  // Ownership is configured on the server and cannot be granted by this form.
+  if (role === "owner") {
+    throw new AccessError(403, "The owner role cannot be assigned here.");
   }
   return { name, email, password, role };
 }

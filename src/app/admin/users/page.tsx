@@ -30,14 +30,14 @@ export default function AccountsPage() {
         setAllowed(true);
         const roles: AppRole[] = result.creatableRoles ?? [];
         setCreatableRoles(roles);
-        setRole(roles[roles.length - 1] ?? "");
+        setRole(roles.includes("developer") ? "developer" : roles[0] ?? "");
       } else {
-        setError(result.error || "Only an admin or above can open this page.");
+        setError(result.error || "Only the owner can open this page.");
       }
     }).catch(() => { if (active) setError("Could not check access. Please reload the page."); })
       .finally(() => { if (active) setChecking(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
-      if (event === "SIGNED_OUT") { setAllowed(false); router.replace("/login/"); }
+      if (event === "SIGNED_OUT") { active = false; setAllowed(false); router.replace("/login/"); }
     });
     return () => { active = false; subscription.unsubscribe(); };
   }, [router]);
@@ -70,7 +70,7 @@ export default function AccountsPage() {
     <main className="accounts-page">
       <Link href="/" className="accounts-back">← Back to projects</Link>
       <section className="accounts-card" aria-labelledby="accounts-title">
-        <div className="auth-header"><span className="auth-badge">Admin only</span><h1 id="accounts-title">Create account</h1><p>Add a person to DevAtlas with a role below your own.</p></div>
+        <div className="auth-header"><span className="auth-badge">Owner only</span><h1 id="accounts-title">Create account</h1><p>Add someone to your team. Only you, the owner, can create accounts.</p></div>
         {checking && <p role="status">Checking your access…</p>}
         {error && <p className="auth-error" role="alert">{error}</p>}
         {created && <div className="account-success" role="status"><strong>Account created</strong><p>{created.name} ({ROLE_LABELS[created.role]}) can now sign in with {created.email} and the initial password you chose.</p></div>}
@@ -83,6 +83,7 @@ export default function AccountsPage() {
               {creatableRoles.map(option => <option key={option} value={option}>{ROLE_LABELS[option]}</option>)}
             </select>
           </label>
+          <p className="form-note">Roles set team responsibilities. They do not let others create accounts.</p>
           <label>Initial password<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required aria-describedby="password-help"/></label>
           <p id="password-help" className="form-note">Use at least 12 characters. Share the password with this person privately.</p>
           <p className="form-note">This form does not send an email.</p>

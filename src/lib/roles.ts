@@ -1,5 +1,4 @@
-// The DevAtlas role ladder, lowest to highest. Rank is what "below your own
-// rank" checks are based on. "owner" is never creatable through the app —
+// The DevAtlas role ladder, lowest to highest. "owner" is never creatable through the app —
 // it's granted by setting DEVATLAS_ADMIN_USER_ID, not through app_metadata.
 export const ROLES = [
   "viewer",
@@ -33,9 +32,7 @@ export function isAtLeast(role: AppRole, minimum: AppRole): boolean {
   return roleRank(role) >= roleRank(minimum);
 }
 
-// Roles a given caller is allowed to hand out when creating a new account:
-// every role ranked strictly below their own, and never "owner".
+// Only the configured owner can create accounts, regardless of team rank.
 export function creatableRolesFor(callerRole: AppRole): AppRole[] {
-  const callerRank = roleRank(callerRole);
-  return ROLES.filter(role => role !== "owner" && roleRank(role) < callerRank);
+  return callerRole === "owner" ? ROLES.filter(role => role !== "owner") : [];
 }
